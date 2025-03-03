@@ -1,47 +1,48 @@
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/require-await */
-/* eslint-disable prettier/prettier */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { Transaction } from '@prisma/client';
-
+import { EventsGateway } from 'src/socket/websocket.gateway';
 
 @Injectable()
 export class TransactionService {
-    constructor(private prisma: PrismaService){}
-    
-    async createTransaction(createTransactionDto: CreateTransactionDto): Promise<Transaction> {
-        const {userId, ...transactionData} = createTransactionDto;
-            return this.prisma.transaction.create({
+  constructor(
+    private prisma: PrismaService,
+    private readonly eventsGateway: EventsGateway,
+  ) {}
+
+  async createTransaction(
+    userId: string,
+    createTransactionDto: CreateTransactionDto,
+  ): Promise<Transaction> {
+    const transaction = await this.prisma.transaction.create({
       data: {
-        ...transactionData,
-        amount: parseFloat(createTransactionDto.amount.toString()),
-        date: new Date(createTransactionDto.date),
+        amount: createTransactionDto.amount,
+        description: createTransactionDto.description,
+        category: createTransactionDto.category,
         createdBy: {
           connect: { id: userId },
         },
-        updatedBy: {
-          connect: { id: userId },
+        group: {
+          connect: { id: createTransactionDto.groupId },
         },
       },
-      include: {
-        createdBy: true,
-        updatedBy: true,
-      },
     });
-    }
+    this.eventsGateway.broadcastToTransactionRoom(
+      createTransactionDto.groupId,
+      'transaction_created',
+      transaction,
+    ); // Broadcast update
 
-    async getAllTransactions(): Promise<Transaction[]> {
-        return this.prisma.transaction.findMany({
-            include: {
-                createdBy: {
-                    select: {
+    return transaction;
+  }
+
+  async getAllTransactions(): Promise<Transaction[]> {
+    return this.prisma.transaction.findMany({
+      include: {
+        createdBy: {
+          select: {
             id: true,
             name: true,
             email: true,
@@ -55,49 +56,73 @@ export class TransactionService {
           },
         },
       },
-        });
-    }
+    });
+  }
 
-    async getTransactionById(id: string): Promise<Transaction | null> {
-        return this.prisma.transaction.findUnique({
-            where: { id },
-            include: {
-                createdBy: true,
-                updatedBy: true,
-            },
-        });
-    }
-    
-    
-    async updateTransaction(id: string, updateTransactionDto: UpdateTransactionDto): Promise<Transaction | null> {
-        const {userId,...transactionData} = updateTransactionDto;
-        return this.prisma.transaction.update({
-    where: { id },
-      data: {
-        ...transactionData,
-        ...(updateTransactionDto.amount && { amount: parseFloat(updateTransactionDto.amount.toString()) }),
-        ...(updateTransactionDto.date && { date: new Date(updateTransactionDto.date) }),
-        updatedBy: {
-          connect: { id: userId },
-        },
-      },
+  async getTransactionById(id: string): Promise<Transaction | null> {
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id },
       include: {
         createdBy: true,
         updatedBy: true,
       },
-        });
+    });
+    if (!transaction) {
+      throw new NotFoundException(`Transaction not found`);
     }
-
-    async deleteTransaction(id: string, userId:string) {
-  const transaction = await this.prisma.transaction.findUnique({
-    where: { id },
-  });
-  
-  if (!transaction) {
-    throw new NotFoundException(`Transaction with ID ${id} not found`);
+    return transaction;
   }
-  
 
-        await this.prisma.transaction.delete({ where: { id } });
+  async updateTransaction(
+    id: string,
+    updateTransactionDto: UpdateTransactionDto,
+  ): Promise<Transaction | null> {
+    const { ...transactionData } = updateTransactionDto;
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id },
+    });
+    if (!transaction) {
+      throw new NotFoundException(`Transaction not found`);
     }
+
+    const updatedData = await this.prisma.transaction.update({
+      where: { id },
+      data: transactionData,
+
+      include: {
+        createdBy: true,
+        updatedBy: true,
+        group: true,
+      },
+    });
+    // Broadcast a message to everyone in the transaction room
+    this.eventsGateway.broadcastToTransactionRoom(
+      transaction.groupId,
+      'transaction_updated',
+      updatedData,
+    );
+    return updatedData;
+  }
+
+  async deleteTransaction(id: string, userId: string, groupId: string) {
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id },
+
+      include: {
+        deletedBy: true,
+        group: true,
+      },
+    });
+
+    if (!transaction) {
+      throw new NotFoundException(`Transaction with ID ${id} not found`);
+    }
+
+    const deletedData = await this.prisma.transaction.delete({ where: { id } });
+    this.eventsGateway.broadcastToTransactionRoom(
+      groupId,
+      'transaction_deleted',
+      deletedData,
+    );
+  }
 }

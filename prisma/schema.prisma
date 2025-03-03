@@ -18,10 +18,14 @@ model User {
   name     String
   email    String  @unique
   password String
+  groupId     String
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   transactions Transaction[] @relation("CreatedBy")
   updatedTransaction Transaction[] @relation("UpdatedBy")
+  deletedTransaction Transaction[] @relation("DeletedBy")
+ group       Group?    @relation(fields: [groupId], references: [id])
 }
 
 model Transaction {
@@ -36,4 +40,18 @@ model Transaction {
   createdById String
   updatedBy   User?     @relation("UpdatedBy", fields: [updatedById], references: [id])
   updatedById String?
+  deletedBy   User?     @relation("DeletedBy", fields: [deletedById], references: [id])
+  deletedById String?
+  group       Group?    @relation(fields: [groupId], references: [id])
+  groupId     String
 }
+
+model Group {
+  id          String    @id @default(uuid())
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  users       User[] 
+  transactions Transaction[] 
+}
+

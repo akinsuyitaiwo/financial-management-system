@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginUserDto } from './dto/login-user.dto';
 import { UserService } from 'src/user/user.service';
 import { UserPayLoad } from './types';
+import { EventsGateway } from 'src/socket/websocket.gateway';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +13,7 @@ export class AuthService {
     private readonly userService: UserService,
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private readonly eventsGateway: EventsGateway,
   ) {}
 
   async login(loginUserDto: LoginUserDto) {
@@ -32,7 +34,7 @@ export class AuthService {
     // Generate JWT token
     const payload: UserPayLoad = { id: user.id, email: user.email };
     const accessToken = this.jwtService.sign(payload);
-
+    this.eventsGateway.server.emit('joinTransactionRoom', user.groupId);
     return { accessToken, user };
   }
 

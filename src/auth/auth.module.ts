@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+ 
+ 
+ 
 import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import * as Joi from 'joi';
@@ -12,6 +12,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserModule } from '../user/user.module';
+import { SocketModule } from 'src/socket/socket.module';
 
 @Module({
     imports: [
@@ -32,6 +33,7 @@ import { UserModule } from '../user/user.module';
     }),
     PassportModule,
     UserModule,
+    SocketModule
   ],
   providers: [AuthService, PrismaService, JwtStrategy],
   controllers: [AuthController],

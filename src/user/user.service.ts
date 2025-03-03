@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable prettier/prettier */
 import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -10,7 +9,7 @@ import * as bcrypt from "bcryptjs"
 export class UserService {
     constructor(private prisma: PrismaService) {}
 
-    async createUser(createUserDto: CreateUserDto): Promise<User> {
+    async createUser(id: string,createUserDto: CreateUserDto): Promise<User> {
         const { name, email, password } = createUserDto;
         const existingUser = await this.prisma.user.findUnique({ where: { email } });
         if (existingUser) {
@@ -23,6 +22,7 @@ export class UserService {
                 name,
                 email,
                 password: hashedPassword,
+                groupId: id
             },
     });
   }

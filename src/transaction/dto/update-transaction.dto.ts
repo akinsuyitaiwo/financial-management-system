@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable prettier/prettier */
-import { IsDateString, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsDateString, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class UpdateTransactionDto {
     @IsOptional()
@@ -17,8 +17,9 @@ export class UpdateTransactionDto {
 
     @IsOptional()
     @IsDateString()
-    date?: string;
-  
-  @IsUUID()
-  userId: string; 
+    date?: string; 
+
+    @IsOptional()
+    @IsString()
+    groupId?: string; 
 }

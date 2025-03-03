@@ -1,9 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable prettier/prettier */
-import { IsDateString, IsNotEmpty, IsNumber, IsString, IsUUID } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateTransactionDto {
-
   @IsNotEmpty()
   @IsNumber()
   amount: number;
@@ -11,14 +8,12 @@ export class CreateTransactionDto {
   @IsNotEmpty()
   @IsString()
   description: string;
-  
+
   @IsNotEmpty()
   @IsString()
   category: 'income' | 'expense';
 
-   @IsDateString()
-  date: string;
-  
-  @IsUUID()
-  userId: string; 
+
+  @IsString()
+  groupId: string;
 }
