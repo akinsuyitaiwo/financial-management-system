@@ -1,4 +1,4 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import {  IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateTransactionDto {
   @IsNotEmpty()
@@ -11,8 +11,7 @@ export class CreateTransactionDto {
 
   @IsNotEmpty()
   @IsString()
-  category: 'income' | 'expense';
-
+  category: string;
 
   @IsString()
   groupId: string;

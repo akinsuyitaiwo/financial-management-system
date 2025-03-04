@@ -23,7 +23,7 @@ export class TransactionController {
     @Req() req,
     @Body() createTransactionDto: CreateTransactionDto,
   ) {
-    const userId = req.user.id; 
+    const userId = req.user.id;
     return this.transactionService.createTransaction(
       userId,
       createTransactionDto,

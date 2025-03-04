@@ -104,7 +104,11 @@ export class TransactionService {
     return updatedData;
   }
 
-  async deleteTransaction(id: string, userId: string, groupId: string) {
+  async deleteTransaction(
+    id: string,
+    userId: string,
+    groupId: string,
+  ): Promise<Transaction> {
     const transaction = await this.prisma.transaction.findUnique({
       where: { id },
 
@@ -124,5 +128,6 @@ export class TransactionService {
       'transaction_deleted',
       deletedData,
     );
+    return deletedData;
   }
 }
