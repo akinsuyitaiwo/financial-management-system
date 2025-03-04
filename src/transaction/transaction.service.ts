@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { Transaction } from '@prisma/client';
-import { EventsGateway } from 'src/socket/websocket.gateway';
+import { EventsGateway } from '../socket/websocket.gateway';
 
 @Injectable()
 export class TransactionService {

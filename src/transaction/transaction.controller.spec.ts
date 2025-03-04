@@ -1,22 +1,59 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TransactionController } from './transaction.controller';
 import { TransactionService } from './transaction.service';
-import { AuthGuard } from '@nestjs/passport';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { CanActivate, ExecutionContext } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { ExecutionContext } from '@nestjs/common';
+
+// Mock AuthGuard
+const mockAuthGuard = {
+  canActivate: (context: ExecutionContext) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const req = context.switchToHttp().getRequest();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    req.user = { id: 'user-id' }; // Mock user
+    return true;
+  },
+};
+
+// Mock data
+const mockTransaction = {
+  id: 'transaction-id',
+  amount: 100,
+  description: 'Test transaction',
+  category: 'Test category',
+  groupId: 'group-id',
+  userId: 'user-id',
+};
+
+const mockCreateTransactionDto: CreateTransactionDto = {
+  amount: 100,
+  description: 'Test transaction',
+  category: 'Test category',
+  groupId: 'group-id',
+  userId: 'user-id',
+};
+
+const mockUpdateTransactionDto: UpdateTransactionDto = {
+  amount: 200,
+  description: 'Updated transaction',
+  type: 'income',
+  date: '2023-10-01',
+  groupId: 'updated-group-id',
+};
+
+// Mock TransactionService
+const mockTransactionService = {
+  createTransaction: jest.fn().mockResolvedValue(mockTransaction),
+  getAllTransactions: jest.fn().mockResolvedValue([mockTransaction]),
+  getTransactionById: jest.fn().mockResolvedValue(mockTransaction),
+  updateTransaction: jest.fn().mockResolvedValue(mockTransaction),
+  deleteTransaction: jest.fn().mockResolvedValue(mockTransaction),
+};
 
 describe('TransactionController', () => {
   let controller: TransactionController;
-  let transactionService: TransactionService;
-
-  const mockAuthGuard: jest.Mocked<CanActivate> = {
-    canActivate: jest.fn((context: ExecutionContext) => {
-      const req = context.switchToHttp().getRequest();
-      req.user = { id: 'user-1' }; // Mock authenticated user
-      return true;
-    }),
-  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -24,200 +61,85 @@ describe('TransactionController', () => {
       providers: [
         {
           provide: TransactionService,
-          useValue: {
-            createTransaction: jest.fn(),
-            getAllTransactions: jest.fn(),
-            getTransactionById: jest.fn(),
-            updateTransaction: jest.fn(),
-            deleteTransaction: jest.fn(),
-          },
+          useValue: mockTransactionService,
         },
       ],
     })
-      .overrideGuard(AuthGuard('jwt'))
+      .overrideGuard(AuthGuard('jwt')) // Override AuthGuard
       .useValue(mockAuthGuard)
       .compile();
 
     controller = module.get<TransactionController>(TransactionController);
-    transactionService = module.get<TransactionService>(TransactionService);
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
   });
 
   describe('createTransaction', () => {
-    it('should create a transaction and return the created transaction', async () => {
-      const createTransactionDto: CreateTransactionDto = {
-        amount: 100,
-        description: 'Groceries',
-        category: 'Food',
-        groupId: 'group-1',
-      };
-
-      const mockTransaction = {
-        id: 'transaction-1',
-        amount: 100,
-        description: 'Groceries',
-        category: 'Food',
-        date: new Date('2023-10-01'), // Add the missing `date` field
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdById: 'user-1',
-        updatedById: 'user-1', // Ensure this matches the expected type (string | null)
-        deletedById: null, // Add the missing `deletedById` field
-        groupId: 'group-1',
-      };
-
-      jest
-        .spyOn(transactionService, 'createTransaction')
-        .mockResolvedValue(mockTransaction);
-
+    it('should create a transaction', async () => {
+      const req = { user: { id: 'user-id' } }; // Mock request object
       const result = await controller.createTransaction(
-        { user: { id: 'user-1' } },
-        createTransactionDto,
+        req,
+        mockCreateTransactionDto,
       );
 
       expect(result).toEqual(mockTransaction);
-      expect(transactionService.createTransaction).toHaveBeenCalledWith(
-        'user-1',
-        createTransactionDto,
+      expect(mockTransactionService.createTransaction).toHaveBeenCalledWith(
+        'user-id',
+        mockCreateTransactionDto,
       );
     });
   });
 
   describe('findAll', () => {
-    it('should return all transactions', async () => {
-      const mockTransactions = [
-        {
-          id: 'transaction-1',
-          amount: 100,
-          description: 'Groceries',
-          category: 'Food',
-          date: new Date('2023-10-01'),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          createdById: 'user-1',
-          updatedById: 'user-1',
-          deletedById: null,
-          groupId: 'group-1',
-        },
-      ];
-
-      jest
-        .spyOn(transactionService, 'getAllTransactions')
-        .mockResolvedValue(mockTransactions);
-
+    it('should return an array of transactions', async () => {
       const result = await controller.findAll();
 
-      expect(result).toEqual(mockTransactions);
-      expect(transactionService.getAllTransactions).toHaveBeenCalled();
+      expect(result).toEqual([mockTransaction]);
+      expect(mockTransactionService.getAllTransactions).toHaveBeenCalled();
     });
   });
 
   describe('findOne', () => {
-    it('should return a transaction by ID', async () => {
-      const transactionId = 'transaction-1';
-      const mockTransaction = {
-        id: transactionId,
-        amount: 100,
-        description: 'Groceries',
-        category: 'Food',
-        date: new Date('2023-10-01'),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdById: 'user-1',
-        updatedById: 'user-1',
-        deletedById: null,
-        groupId: 'group-1',
-      };
-
-      jest
-        .spyOn(transactionService, 'getTransactionById')
-        .mockResolvedValue(mockTransaction);
-
-      const result = await controller.findOne(transactionId);
+    it('should return a transaction by id', async () => {
+      const result = await controller.findOne('transaction-id');
 
       expect(result).toEqual(mockTransaction);
-      expect(transactionService.getTransactionById).toHaveBeenCalledWith(
-        transactionId,
+      expect(mockTransactionService.getTransactionById).toHaveBeenCalledWith(
+        'transaction-id',
       );
     });
   });
 
   describe('update', () => {
-    it('should update a transaction and return the updated transaction', async () => {
-      const transactionId = 'transaction-1';
-      const updateTransactionDto: UpdateTransactionDto = {
-        amount: 200,
-        description: 'Updated Groceries',
-      };
-
-      const mockUpdatedTransaction = {
-        id: transactionId,
-        amount: 200,
-        description: 'Updated Groceries',
-        category: 'Food',
-        date: new Date('2023-10-01'),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdById: 'user-1',
-        updatedById: 'user-1',
-        deletedById: null,
-        groupId: 'group-1',
-      };
-
-      jest
-        .spyOn(transactionService, 'updateTransaction')
-        .mockResolvedValue(mockUpdatedTransaction);
-
+    it('should update a transaction', async () => {
       const result = await controller.update(
-        transactionId,
-        updateTransactionDto,
+        'transaction-id',
+        mockUpdateTransactionDto,
       );
 
-      expect(result).toEqual(mockUpdatedTransaction);
-      expect(transactionService.updateTransaction).toHaveBeenCalledWith(
-        transactionId,
-        updateTransactionDto,
+      expect(result).toEqual(mockTransaction);
+      expect(mockTransactionService.updateTransaction).toHaveBeenCalledWith(
+        'transaction-id',
+        mockUpdateTransactionDto,
       );
     });
   });
 
   describe('deleteTransaction', () => {
-    it('should delete a transaction and return the deleted transaction', async () => {
-      const transactionId = 'transaction-1';
-      const userId = 'user-1';
-      const groupId = 'group-1';
-
-      const mockDeletedTransaction = {
-        id: transactionId,
-        amount: 100,
-        description: 'Groceries',
-        category: 'Food',
-        date: new Date('2023-10-01'),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdById: 'user-1',
-        updatedById: 'user-1',
-        deletedById: null,
-        groupId: 'group-1',
-      };
-
-      jest
-        .spyOn(transactionService, 'deleteTransaction')
-        .mockResolvedValue(mockDeletedTransaction);
-
-      const result = await controller.deleteTransaction( transactionId,
-        userId,
-        groupId,
+    it('should delete a transaction', async () => {
+      const result = await controller.deleteTransaction(
+        'transaction-id',
+        'user-id',
+        'group-id',
       );
 
-      expect(result).toEqual(mockDeletedTransaction);
-      expect(transactionService.deleteTransaction).toHaveBeenCalledWith(
-        transactionId,
-        userId,
-        groupId,
+      expect(result).toEqual(mockTransaction);
+      expect(mockTransactionService.deleteTransaction).toHaveBeenCalledWith(
+        'transaction-id',
+        'user-id',
+        'group-id',
       );
     });
   });

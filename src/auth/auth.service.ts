@@ -3,9 +3,9 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginUserDto } from './dto/login-user.dto';
-import { UserService } from 'src/user/user.service';
+import { UserService } from '../user/user.service';
 import { UserPayLoad } from './types';
-import { EventsGateway } from 'src/socket/websocket.gateway';
+import { EventsGateway } from '../socket/websocket.gateway';
 
 @Injectable()
 export class AuthService {

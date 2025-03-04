@@ -1,4 +1,4 @@
-import {  IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateTransactionDto {
   @IsNotEmpty()
@@ -15,4 +15,7 @@ export class CreateTransactionDto {
 
   @IsString()
   groupId: string;
+
+  @IsString()
+  userId: string;
 }
