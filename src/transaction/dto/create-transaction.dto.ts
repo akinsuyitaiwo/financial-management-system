@@ -16,6 +16,7 @@ export class CreateTransactionDto {
   @IsString()
   groupId: string;
 
+  @IsNotEmpty()
   @IsString()
   userId: string;
 }

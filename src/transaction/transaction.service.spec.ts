@@ -3,6 +3,7 @@ import { TransactionService } from './transaction.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { EventsGateway } from '../socket/websocket.gateway';
+import { NotFoundException } from '@nestjs/common';
 
 describe('TransactionService', () => {
   let transactionService: TransactionService;
@@ -11,11 +12,12 @@ describe('TransactionService', () => {
 
   // Mock data
 
-  const mockUser = {
+   const mockUser = {
     id: 'user-id',
     email: 'test@example.com',
     name: 'Test User',
   };
+
   const mockTransaction = {
     id: 'transaction-id',
     amount: 100,
@@ -32,7 +34,7 @@ describe('TransactionService', () => {
     groupId: 'group-id',
   };
 
-    const mockEventsGateway = {
+  const mockEventsGateway = {
     broadcastToTransactionRoom: jest.fn(),
   };
 
@@ -40,8 +42,7 @@ describe('TransactionService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TransactionService,
-         { provide: EventsGateway, useValue: mockEventsGateway },
-
+        { provide: EventsGateway, useValue: mockEventsGateway },
         {
           provide: PrismaService,
           useValue: {
@@ -66,6 +67,37 @@ describe('TransactionService', () => {
 
   describe('createTransaction', () => {
     it('should create a transaction', async () => {
+      // Mock the Prisma create method
+      (prismaService.transaction.create as jest.Mock).mockResolvedValue(
+        mockTransaction,
+      );
+
+      // Call the method under test with the correct argument order
+      const result = await transactionService.createTransaction(
+        mockUser.id,
+        mockCreateTransactionDto, // DTO should be the first argument
+         // User object should be the second argument
+      );
+
+      // Assertions
+      expect(result).toEqual(mockTransaction);
+
+      // Verify the correct arguments were passed to Prisma
+      expect(prismaService.transaction.create).toHaveBeenCalledWith({
+        data: {
+          amount: mockCreateTransactionDto.amount,
+          description: mockCreateTransactionDto.description,
+          category: mockCreateTransactionDto.category,
+          createdBy: { connect: { id: mockUser.id } }, // userId is transformed into createdBy
+          group: { connect: { id: mockCreateTransactionDto.groupId } }, // groupId is transformed into group
+        },
+      });
+
+      // Verify that the event was broadcast
+      expect(eventsGateway.broadcastToTransactionRoom).toHaveBeenCalled();
+    });
+  });  describe('createTransaction', () => {
+    it('should create a transaction', async () => {
       const result = await transactionService.createTransaction(
         mockUser.id,
         mockCreateTransactionDto,
@@ -74,15 +106,18 @@ describe('TransactionService', () => {
       expect(result).toEqual(mockTransaction);
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(prismaService.transaction.create).toHaveBeenCalledWith({
-        data: {
-          ...mockCreateTransactionDto,
-          createdBy: { connect: { id: mockUser.id } },
-        },
+  data: {
+    amount: mockCreateTransactionDto.amount,
+    description: mockCreateTransactionDto.description,
+    category: mockCreateTransactionDto.category,
+    createdBy: { connect: { id: mockUser.id } },
+    group: { connect: { id: mockCreateTransactionDto.groupId } }, // ✅ Fix: Match how the service connects the group
+  },
       });
     });
   });
 
-  describe('getTransactionById', () => {
+   describe('getTransactionById', () => {
     it('should return a transaction by id', async () => {
       const result = await transactionService.getTransactionById(
         mockTransaction.id,
@@ -91,20 +126,30 @@ describe('TransactionService', () => {
       expect(result).toEqual(mockTransaction);
       expect(prismaService.transaction.findUnique).toHaveBeenCalledWith({
         where: { id: mockTransaction.id },
+        include: {
+          createdBy: true,
+          updatedBy: true,
+        },
       });
     });
 
-    it('should return null if transaction is not found', async () => {
+    it('should throw NotFoundException if transaction is not found', async () => {
       jest
         .spyOn(prismaService.transaction, 'findUnique')
         .mockResolvedValueOnce(null);
 
-      const result =
-        await transactionService.getTransactionById('non-existent-id');
+      // Assert that the method throws NotFoundException
+      await expect(
+        transactionService.getTransactionById('non-existent-id'),
+      ).rejects.toThrow('Transaction not found');
 
-      expect(result).toBeNull();
+      // Verify that the correct query was made to Prisma
       expect(prismaService.transaction.findUnique).toHaveBeenCalledWith({
         where: { id: 'non-existent-id' },
+        include: {
+          createdBy: true,
+          updatedBy: true,
+        },
       });
     });
   });

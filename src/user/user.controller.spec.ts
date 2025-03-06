@@ -44,6 +44,7 @@ describe('UserController', () => {
         ...createUserDto,
         password: 'hashedPassword',
         groupId,
+        refreshToken: "ghfuehueueuuguguguhush",
         createdAt: new Date(),
         updatedAt: new Date(),
       };

@@ -59,7 +59,7 @@ export class TransactionService {
     });
   }
 
-  async getTransactionById(id: string): Promise<Transaction | null> {
+  async getTransactionById(id: string): Promise<Transaction> {
     const transaction = await this.prisma.transaction.findUnique({
       where: { id },
       include: {
@@ -78,12 +78,7 @@ export class TransactionService {
     updateTransactionDto: UpdateTransactionDto,
   ): Promise<Transaction | null> {
     const { ...transactionData } = updateTransactionDto;
-    const transaction = await this.prisma.transaction.findUnique({
-      where: { id },
-    });
-    if (!transaction) {
-      throw new NotFoundException(`Transaction not found`);
-    }
+
 
     const updatedData = await this.prisma.transaction.update({
       where: { id },
@@ -97,7 +92,7 @@ export class TransactionService {
     });
     // Broadcast a message to everyone in the transaction room
     this.eventsGateway.broadcastToTransactionRoom(
-      transaction.groupId,
+      updatedData.groupId,
       'transaction_updated',
       updatedData,
     );
